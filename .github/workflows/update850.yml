@@ -1,0 +1,60 @@
+name: Update 850mb Temps
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # runs every 6 hours
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Install wgrib2
+      run: sudo apt-get update && sudo apt-get install -y wgrib2
+
+    - name: Download GFS GRIB
+      run: |
+        TODAY=$(date +"%Y%m%d")
+        RUN="00"
+        URL="https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/gfs.$TODAY/$RUN/gfs.t${RUN}z.pgrb2.0p25.f000"
+        curl -o gfs.grib2 $URL
+
+    - name: Download ICON GRIB
+      run: |
+        RUN="00"
+        URL="https://opendata.dwd.de/weather/nwp/icon/grib/icon_global_icosahedral/grib/$RUN/icon_global_00_000.grib2"
+        curl -o icon.grib2 $URL
+
+    - name: Extract 850mb temps
+      run: |
+        wgrib2 gfs.grib2 -match ":TMP:850 mb:" -csv gfs_850.csv
+        wgrib2 icon.grib2 -match ":t:850 hPa:" -csv icon_850.csv
+
+    - name: Build JSON
+      run: |
+        python3 <<EOF
+import csv, json
+
+def load_csv(path, model):
+    out = []
+    with open(path) as f:
+        r = csv.DictReader(f)
+        for row in r:
+            out.append({
+                "time": row.get("validTime", ""),
+                "model": model,
+                "tmp850": float(row.get("value", 0))
+            })
+    return out
+
+data = load_csv("gfs_850.csv", "GFS") + load_csv("icon_850.csv", "ICON")
+
+with open("docs/850mb.json", "w") as f:
+    json.dump(data, f)
+EOF
+
+    - name
