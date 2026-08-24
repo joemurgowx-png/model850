@@ -10,8 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: GuillaumeFalourd/checkout@v1
+    - name: Prepare git
+      run: |
+        git init
+        git remote add origin https://github.com/${GITHUB_REPOSITORY}.git
+        git fetch origin main
+        git checkout main
 
     - name: Install wgrib2
       run: sudo apt-get update && sudo apt-get install -y wgrib2
@@ -43,4 +47,4 @@ jobs:
         git config user.email "github-actions@github.com"
         git add docs/850mb.json
         git commit -m "Update 850mb temps"
-        git push
+        git push origin main
