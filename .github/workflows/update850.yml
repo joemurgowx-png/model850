@@ -34,28 +34,9 @@ jobs:
         wgrib2 gfs.grib2 -match ":TMP:850 mb:" -csv gfs_850.csv
         wgrib2 icon.grib2 -match ":t:850 hPa:" -csv icon_850.csv
 
-    - name: Build JSON
+    - name: Build JSON with Python
       run: |
-        python3 <<EOF
-import csv, json
-
-def load_csv(path, model):
-    out = []
-    with open(path) as f:
-        r = csv.DictReader(f)
-        for row in r:
-            out.append({
-                "time": row.get("validTime", ""),
-                "model": model,
-                "tmp850": float(row.get("value", 0))
-            })
-    return out
-
-data = load_csv("gfs_850.csv", "GFS") + load_csv("icon_850.csv", "ICON")
-
-with open("docs/850mb.json", "w") as f:
-    json.dump(data, f)
-EOF
+        python3 build_json.py
 
     - name: Commit results
       run: |
